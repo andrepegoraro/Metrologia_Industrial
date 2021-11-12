@@ -1,0 +1,356 @@
+---
+title: "Relatório Balança Virtual"
+author: "André Pegoraro Neto"
+date: "12/11/2021"
+output: 
+  html_document:
+    highlight: textmate
+    number_sections: yes
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+      
+---
+
+# Introdução
+
+Este trabalho tem por objetivo, de forma geral, **calibrar uma balança virtual**. As questões pedidas serão respondidas conforme leitura deste relatório.
+
+# Bibliotecas
+
+Antes de tudo, para a realização do tratamento de dados, deve-se carregar os pacotes que possivelmente serão utilizados.
+
+``` {r carregamento pacotes, warning = FALSE, message = FALSE}
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(magrittr)
+library(scales)
+library(readxl)
+library(kableExtra)
+
+```
+
+# Atividades
+
+## Erro aleatório
+
+Conforme pedido no item **(a)**, foi feita a **medição da massa de 1000g por 100 vezes** e seus respectivos valores foram computados em um arquivo `.xlsx`. Agora deve-se importá-lo e, a partir dele, criar um dataset para responder às questÕes:
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31 <- read_excel("C:/Users/155 X-MX/Desktop/Graduação/21.2 - Outubro 2021 - Março 2022/EMC5236 - Metrologia Industrial/Balanca_Virtual/Medidas_Balanca_3_1.xlsx")
+
+kable(head(DadosBalanca31, 10)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("hover", "striped", "responsive"))
+
+```
+
+Pede-se a frequência das ocorrências de cada valor dentro da amostra, assim como sua distribuição em um formato de histograma para comparação com a distribuição normal padrão de probabilidade.
+
+Primeiramente, vamos criar um novo dataset em que os dados de ocorrência da balança serão considerados como **fatores (as factor)**. Dessa forma, basta utilizar a função `summary` para descrever os detalhes do dataset (que agora é qualitativo)
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31_factor <- as.factor(DadosBalanca31$I)
+summary(DadosBalanca31_factor)
+
+```
+Feito isso, pode-se plotar os elementos da amostra em um histograma. Junto a ele, como pede no exercício, deve-se plotar uma curva normal de probabilidade.
+
+``` {r, warning = FALSE, message = FALSE}
+
+ggplot(DadosBalanca31, aes(x = I)) +
+  geom_histogram(aes(y = ..density..), 
+                 breaks = seq(1001, 1014, by = 1),
+                 fill = "cornflowerblue", 
+                 color = "white") + 
+  stat_function(fun = dnorm,
+                args = list(mean = mean(DadosBalanca31$I),
+                            sd = sd(DadosBalanca31$I)),
+                col = "black",
+                size = 2) +
+  labs(title="Distribuição das Medidas da Balança",
+       x = "Medidas")
+  
+
+```
+Percee-se como os gráficos se assemelham. Conforme maior fosse a amostra, mais próximo da curva o gráfico se tornaria.
+
+``` {r, warning = FALSE, message = FALSE}
+
+n <- length(DadosBalanca31$I)
+n
+
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+I_bar <- mean(DadosBalanca31$I)
+I_bar
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+VVC <- 1000
+
+```
+
+Correção
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31["C"] <- VVC - I_bar
+
+kable(head(DadosBalanca31, 10)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("hover", "striped", "responsive"))
+
+```
+
+Indicação Corrigida
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31["Ic"] <- DadosBalanca31$I + DadosBalanca31$C
+
+kable(head(DadosBalanca31, 10)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("hover", "striped", "responsive"))
+
+```
+
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31_sd <- sd(DadosBalanca31$I)
+DadosBalanca31_sd
+
+```
+Temos que a incerteza padrão, por definição, corresponde à estimativa do desvio padrão da distribuição dos erros de medição, e possui mesmo o mesmo valor que o desvio padrão:
+
+``` {r, warning = FALSE, message = FALSE}
+
+u <- DadosBalanca31_sd
+u
+
+```
+
+Com isso, estimativa da repetitividade para amostras finitas pode ser calculada, utilizando-se o valor da tabela T Student para 95% de confiança e 99 graus de liberdade: 
+
+
+``` {r, warning = FALSE, message = FALSE}
+
+t <- qt(0.975, 99, lower.tail=T)
+t
+
+Re <- t * u
+Re
+
+```
+Ou seja, a repetitividade foi estimada em **Re = 4,91 g**
+
+Agora, para responder ao **item c**, podemos subtrair o Valor Verdadeiro COnvencional da Indicação Corrigida para cada um dos elementos:
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca31["Ea"] <- VVC - DadosBalanca31$Ic
+
+kable(head(DadosBalanca31, 10)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("hover", "striped", "responsive"))
+
+```
+
+Vamos visualizar como se dispõe a distribuição do Erro Aleatório:
+
+``` {r, warning = FALSE, message = FALSE}
+
+ggplot(DadosBalanca31, aes(x = Ea)) +
+  geom_histogram(aes(y = ..density..), 
+                 breaks = seq(-5, 5, by = 1),
+                 fill = "grey", 
+                 color = "white") + 
+  stat_function(fun = dnorm,
+                args = list(mean = mean(DadosBalanca31$Ea),
+                            sd = sd(DadosBalanca31$Ea)),
+                col = "cornflowerblue",
+                size = 2) +
+  labs(title="Distribuição do Erro Aleatório",
+       x = "Medidas")
+
+```
+Agora, tendo o intervalo do erro definido, pode-se conferir se pelo menos 95% das indicações obtidas estão dentro dessa faixa da Repetitividade:
+
+``` {r, warning = FALSE, message = FALSE}
+
+Re_negativo <- (-Re)
+
+sum(DadosBalanca31$Ea > Re_negativo & DadosBalanca31$Ea < Re)
+
+```
+Como a amostra é de tamanho n = 100, 96% dos valores estão dentro da faixa de repetitividade
+
+## Tendência e Correção
+
+* **(a)**: O valor da correção foi calculado anteriormente para formulação da tabela:
+
+``` {r, warning = FALSE, message = FALSE}
+
+C <- VVC - I_bar
+C
+
+```
+
+Por definição, sabemos que **C = - Td**. Logo, pode-se calcular **Td**:
+``` {r, warning = FALSE, message = FALSE}
+
+Td <- (-C)
+Td
+
+```
+
+* **item (b)**: Feitas as medições na balança, importa-se os dados para um dataset:
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca32 <- read_excel("C:/Users/155 X-MX/Desktop/Graduação/21.2 - Outubro 2021 - Março 2022/EMC5236 - Metrologia Industrial/Balanca_Virtual/Medidas_Balanca_3_2.xlsx")
+
+kable(head(DadosBalanca31, 10)) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("hover", "striped", "responsive"))
+
+```
+
+Visualização da distribuição dos dados:
+
+``` {r, warning = FALSE, message = FALSE}
+
+ggplot(DadosBalanca32, aes(x = I)) +
+  geom_histogram(aes(y = ..density..), 
+                 breaks = seq(5007, 5021, by = 1),
+                 fill = "cornflowerblue", 
+                 color = "white") + 
+  stat_function(fun = dnorm,
+                args = list(mean = mean(DadosBalanca32$I),
+                            sd = sd(DadosBalanca32$I)),
+                col = "black",
+                size = 2) +
+  labs(title="Distribuição das Medidas da Balança",
+       x = "Medidas")
+
+```
+Para calcular a Correção e a Tendência, respectivamente, têm-se:
+
+``` {r, warning = FALSE, message = FALSE}
+
+I_bar_2 <- mean(DadosBalanca32$I)
+VVC_2 <- 5000
+
+C_2 <- VVC_2 - I_bar_2
+C_2
+
+Td_2 <- I_bar_2 - VVC_2
+Td_2
+
+```
+
+Esses valores são diferentes dos valores das medições do item anterior pois o erro da balança se propaga conforme valor o que está sendo medido. Para maiores pesos, têm-se maiores erros (em valores brutos).
+
+* **item (c)**: Cálculos da **Tendência** e **Incerteza Padrão.** A Tendência é uma estimativa do erro sistemático e a Incerteza é uma estimativa do desvio padrão da distribuição dos erros de medição:
+
+``` {r, warning = FALSE, message = FALSE}
+
+DadosBalanca322 <- DadosBalanca32[c(1:16), c(1:2)]
+DadosBalanca323 <- DadosBalanca32[c(1:4), c(1:2)]
+
+```
+
+Para a amostra de n = 100:
+
+``` {r, warning = FALSE, message = FALSE}
+
+I_bar_2 <- mean(DadosBalanca32$I)
+VVC_2 <- 5000
+
+Td_2 <- I_bar_2 - VVC_2
+Td_2
+
+u_2 <- sd(DadosBalanca32$I)
+u_2
+
+```
+
+Para a amostra de n = 16:
+
+``` {r, warning = FALSE, message = FALSE}
+
+I_bar_3 <- mean(DadosBalanca322$I)
+VVC_3 <- 5000
+
+Td_3 <- I_bar_3 - VVC_3
+Td_3
+
+u_3 <- sd(DadosBalanca322$I)
+u_3
+
+```
+
+Para a amostra de n = 4:
+
+``` {r, warning = FALSE, message = FALSE}
+
+I_bar_4 <- mean(DadosBalanca323$I)
+VVC_4 <- 5000
+
+Td_4 <- I_bar_4 - VVC_4
+Td_4
+
+u_4 <- sd(DadosBalanca323$I)
+u_4
+
+
+```
+
+**Verificar graficamente (não entendi)**
+
+``` {r, warning = FALSE, message = FALSE}
+
+df_32 <- data.frame()
+
+```
+
+##Calibração da Balança
+
+
+
+``` {r, warning = FALSE, message = FALSE}
+
+
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+
+
+```
+
+``` {r, warning = FALSE, message = FALSE}
+
+
+
+```
