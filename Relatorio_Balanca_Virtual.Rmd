@@ -85,7 +85,6 @@ Percee-se como os gráficos se assemelham. Conforme maior fosse a amostra, mais 
 n <- length(DadosBalanca31$I)
 n
 
-
 ```
 
 ``` {r, warning = FALSE, message = FALSE}
@@ -123,6 +122,7 @@ kable(head(DadosBalanca31, 10)) %>%
 
 ```
 
+Desvio Padrão
 
 ``` {r, warning = FALSE, message = FALSE}
 
@@ -140,7 +140,6 @@ u
 ```
 
 Com isso, estimativa da repetitividade para amostras finitas pode ser calculada, utilizando-se o valor da tabela T Student para 95% de confiança e 99 graus de liberdade: 
-
 
 ``` {r, warning = FALSE, message = FALSE}
 
@@ -322,7 +321,6 @@ df_32 <- data.frame()
 ```
 
 ##Calibração da Balança
-
 
 
 ``` {r, warning = FALSE, message = FALSE}
